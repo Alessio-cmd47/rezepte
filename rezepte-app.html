@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#1a202c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rezepte">
+<title>Rezepte</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f6ad55'/><text x='50' y='68' text-anchor='middle' font-size='60'>🍽️</text></svg>">
+<style>
+:root{--bg:#1a202c;--card:#2d3748;--text:#f7fafc;--muted:#a0aec0;--accent:#f6ad55;--border:#4a5568;--check:#48bb78}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:var(--bg);color:var(--text);padding-bottom:80px}
+header{position:sticky;top:0;background:var(--card);padding:12px 16px;border-bottom:1px solid var(--border);z-index:10}
+h1{margin:0;font-size:20px;font-weight:600}
+.search{width:100%;padding:10px 12px;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:16px;font-family:inherit}
+.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--border);z-index:10;padding-bottom:env(safe-area-inset-bottom)}
+.tab{flex:1;padding:14px 8px;text-align:center;background:none;border:0;color:var(--muted);font-size:13px;font-family:inherit;cursor:pointer}
+.tab.active{color:var(--accent)}
+.view{padding:16px;display:none}
+.view.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer}
+.card h3{margin:0 0 6px 0;font-size:16px}
+.card .meta{color:var(--muted);font-size:13px;margin-bottom:8px}
+.tag{display:inline-block;background:var(--bg);padding:2px 8px;border-radius:4px;font-size:12px;margin-right:4px;margin-bottom:4px}
+.checkbox{display:flex;align-items:flex-start;padding:10px 4px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+.checkbox input{margin-right:12px;width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:var(--check)}
+.checkbox.done{opacity:0.45;text-decoration:line-through}
+.checkbox span{flex:1;line-height:1.4}
+button.primary{background:var(--accent);color:#1a202c;border:0;padding:14px 24px;border-radius:8px;font-weight:600;font-size:15px;cursor:pointer;font-family:inherit}
+.filter-bar{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px;-webkit-overflow-scrolling:touch}
+.filter-bar::-webkit-scrollbar{display:none}
+.filter-bar button{padding:6px 12px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:16px;font-size:13px;white-space:nowrap;cursor:pointer;font-family:inherit}
+.filter-bar button.active{background:var(--accent);color:#1a202c;border-color:var(--accent)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;z-index:100;align-items:flex-end}
+.modal-bg.show{display:flex}
+.modal{background:var(--card);width:100%;max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;padding:20px 16px 40px;position:relative}
+.modal h2{margin:0 0 8px 0;font-size:20px;padding-right:30px}
+.modal h3{margin:16px 0 8px 0;font-size:15px;color:var(--accent)}
+.modal-close{position:absolute;top:12px;right:16px;background:none;border:0;color:var(--text);font-size:32px;cursor:pointer;line-height:1;padding:0;width:32px;height:32px}
+.modal ul{padding-left:20px;margin:0}
+.modal li{padding:3px 0;line-height:1.4}
+.modal p{line-height:1.5;margin:8px 0}
+.add-btn{background:var(--accent);color:#1a202c;border:0;padding:12px 16px;border-radius:8px;font-weight:600;cursor:pointer;margin-top:16px;width:100%;font-size:15px;font-family:inherit}
+.selected{border-color:var(--accent);border-width:2px;background:#3a4458}
+.empty{color:var(--muted);text-align:center;padding:32px 16px}
+.section-h{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px;padding-left:4px}
+.toast{position:fixed;bottom:90px;left:16px;right:16px;background:var(--check);color:#fff;padding:14px;border-radius:8px;text-align:center;font-weight:500;z-index:200;display:none}
+.toast.show{display:block;animation:fade 2.5s ease}
+@keyframes fade{0%{opacity:0;transform:translateY(20px)}15%{opacity:1;transform:translateY(0)}85%{opacity:1}100%{opacity:0}}
+</style>
+</head>
+<body>
+<header><h1 id="title">Rezepte</h1></header>
+
+<main>
+<div id="rezepte" class="view active">
+<input type="search" class="search" placeholder="Rezept suchen..." oninput="filterR(this.value)">
+<div class="filter-bar" id="filters"></div>
+<div id="recipe-list"></div>
+</div>
+
+<div id="plan" class="view">
+<p class="meta" style="margin-top:0">Tippe Rezepte an, um sie für die Woche zu wählen.</p>
+<div id="plan-list"></div>
+<button class="primary" onclick="genShop()" style="margin-top:16px;width:100%">Einkaufsliste generieren →</button>
+<p id="plan-summary" class="meta" style="margin-top:8px;text-align:center"></p>
+</div>
+
+<div id="einkauf" class="view">
+<div class="filter-bar">
+<button class="active" onclick="showShop('aktuell',this)">Wochen-Einkauf</button>
+<button onclick="showShop('basis',this)">Basis-Vorrat</button>
+</div>
+<div id="shop-content"></div>
+<button class="primary" onclick="resetShop()" style="margin-top:16px;width:100%;background:#e53e3e;color:#fff">Liste zurücksetzen</button>
+</div>
+</main>
+
+<nav class="tabs">
+<button class="tab active" onclick="setTab('rezepte',this,'Rezepte')">📖 Rezepte</button>
+<button class="tab" onclick="setTab('plan',this,'Wochenplan')">📅 Plan</button>
+<button class="tab" onclick="setTab('einkauf',this,'Einkauf')">🛒 Einkauf</button>
+</nav>
+
+<div class="modal-bg" id="modal" onclick="if(event.target.id==='modal')closeModal()">
+<div class="modal">
+<button class="modal-close" onclick="closeModal()">×</button>
+<div id="modal-content"></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const rezepte=[
+{n:"Butter Chicken & Greek Yogurt Naan",kcal:510,p:48,port:4,tag:["Hähnchen","Reis","Indisch","Hoch-Protein"],z:["680g Hähnchenbrust gewürfelt","470g griech. Joghurt 0% (115 Marinade + 115 Sauce + 240 Naan)","60ml Milch","6 Knoblauchzehen","30g frischer Ingwer","1 EL Zitronensaft","150g gelbe Zwiebel","360ml Tomatenpassata","15g Tomatenmark","2 EL Light Butter/Ghee","1 EL Olivenöl","120g Self-rising flour","320g Basmati-Reis","2 TL Garam Masala","2 TL Cumin","1 TL Kurkuma","1/2 TL Chili","1/2 TL Smoked Paprika","Salz","Frischer Cilantro"],abl:"Hähnchen ≥30 min marinieren (Joghurt + Zitrone + Ingwer + Knoblauch + Gewürze). 4-5 min anbraten, beiseite. Zwiebel/Knoblauch/Ingwer in Butter, Passata + Tomatenmark + Gewürze 10 min köcheln. Joghurt + Milch + Hähnchen zurück, 5-7 min, Cilantro. Naan-Teig in 4 Fladen, trockene Pfanne 2-3 min/Seite, mit Knoblauchbutter bestreichen. Mit Reis servieren."},
+{n:"Big Mac Tacos",kcal:420,p:38,port:4,tag:["Beef","Wrap","Mexikanisch"],z:["454g mageres Rinderhack 93%","8 Low-carb Tortillas (280g)","80g Käse American/Cheddar light","47g Eisbergsalat","75g weiße Zwiebel","70g Dill-Pickles","60g griech. Joghurt 0%","30g Light Mayo","15g Sugar-free Ketchup","1 TL gelber Senf","5ml Reisessig/Pickle Juice","1,5 TL Knoblauchpulver","1/2 TL Onion Powder","Salz","Schwarzer Pfeffer"],abl:"Sauce verrühren, kalt ziehen lassen. Beef in 8 Bälle teilen, auf Tortilla pressen. 2-3 min beef-side down anbraten, flippen, Käse drauf, Deckel 1 min. Mit Salat, Zwiebel, Pickles, Sauce belegen."},
+{n:"Egg Roll in a Bowl + Sweet & Sour",kcal:560,p:42,port:4,tag:["Hähnchen","Reis","Asiatisch","Hoch-Protein"],z:["454g Hähnchen-/Putenhack","1 EL Sesamöl","100g Zwiebel","3 Knoblauchzehen","1 EL frischer Ingwer","300g Weißkohl geraspelt","100g Möhren geraspelt","75ml Soja low sodium (45+30)","60ml Reisessig (15+45)","1/2 TL Schwarzer Pfeffer","720g Jasmin-Reis","120ml Ananassaft","45g Ketchup","25g brauner Zucker/Honig","1 EL Speisestärke + 2 EL Wasser","Frühlingszwiebel","Sesam","Cilantro"],abl:"Hack mit Zwiebel anbraten, Knoblauch + Ingwer 1 min. Kohl + Möhren 5-6 min, Soja + Essig + Pfeffer. Sauce: alles simmern, Slurry rein bis dick. Reis + Bowl + Sauce drüber, Garnitur."},
+{n:"Burger Bowl",kcal:495,p:41,port:4,tag:["Beef","Kartoffel","American","Hoch-Protein"],z:["450g extra-mageres Rinderhack","400g Russet-Kartoffeln gewürfelt","300g Romaine","150g Trauben-Tomaten","60g Pickles","60g Pepperoncini","80g rote/gelbe Zwiebel","56g Cheddar/Monterey Jack","18g Sesam","60g griech. Joghurt 0%","30g Light Mayo","23g Ketchup","8g gelber Senf","5ml Pickle Juice","Smoked Paprika","Knoblauchpulver","Onion Powder","Oregano","Chiliflocken","Olivenöl","Salz","Pfeffer"],abl:"Kartoffeln mit Öl + Gewürzen 20-25 min @ 220°C. Beef anbraten, würzen, Fett ablaufen. Zwiebel separat anschwitzen. Sauce mischen. Romaine + Beef + Kartoffeln + Tomaten + Pickles + Zwiebel + Pepperoncini + Käse + Sauce."},
+{n:"Cherry Chia Jam Peanut Butter Cookie Cups",kcal:220,p:8,port:10,tag:["Dessert"],z:["425g TK-Süßkirschen","240ml Wasser","30ml + 80ml Ahornsirup","18g Chia-Samen","5+7ml Vanilleextrakt","1g Zimt","100g Mandelmehl","100g Hafermehl","125g Erdnussbutter cremig","45ml Mandelmilch","Optional: 80g Kokos-Joghurt"],abl:"Kirschen + Wasser + Sirup + Chia + Vanille + Zimt aufkochen, 10-12 min köcheln, abkühlen. Mandel-/Hafermehl + Sirup + PB + Vanille + Milch zu festem Teig. In Muffin-Förmchen drücken, Marmelade drauf, 1,5-2 h gefrieren."},
+{n:"Sweet Potato Cottage Cheese Beef Bowl",kcal:565,p:46,port:4,tag:["Beef","Süßkartoffel","Hoch-Protein","Meal-Prep"],z:["680g mageres Rinderhack 90/10","500g Süßkartoffeln gewürfelt","450g Hüttenkäse low-fat","2 Avocados (300g)","1 EL Olivenöl","30ml Hot Honey","4g Everything Bagel Seasoning","1,5 TL Knoblauchpulver","1 TL Onion Powder","2 TL Smoked Paprika","1 TL Chilipulver","Salz","Schwarzer Pfeffer"],abl:"Süßkartoffel mit Öl + Gewürzen 25 min @ 200°C. Hack anbraten, würzen. Bowls: Süßkartoffel + Beef + Hüttenkäse + Avocado. Avocado mit Bagel-Seasoning, Hüttenkäse mit Hot Honey."},
+{n:"Keto Spicy Shrimp Wraps + Creamy Slaw",kcal:480,p:42,port:4,tag:["Garnele","Wrap","Keto","Hoch-Protein"],z:["450g Garnelen geschält","1 EL Olivenöl/Avocadoöl","15ml Limettensaft","210g grüner Kohl geraspelt","35g roter Kohl","40g rote Zwiebel","8g Cilantro","75g Avocadoöl-Mayo","15g Sugar-free Ketchup","15g Sriracha","5ml Apfelessig","8 Keto-Tortillas","1 TL Smoked Paprika","1/2 TL Chili","1/2 TL Knoblauchpulver","Salz","Pfeffer"],abl:"Garnelen mit Öl + Gewürzen + Limette würzen, 2-3 min/Seite anbraten. Sauce verrühren. Slaw aus Kohl + Zwiebel + Cilantro mit halber Sauce. Wraps warm, Garnelen + Slaw + Restsauce."},
+{n:"Air Fryer Roasted Greek Chicken Bowl",kcal:510,p:47,port:4,tag:["Hähnchen","Reis","Mediterran","Hoch-Protein"],z:["454g Hähnchenbrust gewürfelt","1 EL + 1 TL Olivenöl","15ml Zitronensaft","2 Knoblauchzehen","150g grüne Paprika","150g rote Zwiebel","150g Cherrytomaten","370g Basmati-Reis","2 EL Parmesan (optional)","1 TL Oregano","1 TL Basilikum","1/2 TL Paprika","Salz","Pfeffer","Petersilie"],abl:"Hähnchen ≥20 min marinieren (Öl + Zitrone + Knoblauch + Kräuter). Air Fryer 193°C 10 min. Veggies dazu, weitere 8-10 min. Reis + Hähnchen + Veggies + Parmesan."},
+{n:"Chipotle Shrimp Salad Bowl",kcal:510,p:39,port:4,tag:["Garnele","Salat","Mexikanisch"],z:["680g Garnelen","1 EL Olivenöl","2 Knoblauchzehen","Saft 1/2 Limette","6 cups Romaine","1 Avocado","2 Tomaten","1/2 rote Zwiebel","120ml griech. Joghurt","1 EL Mayo","1 EL Limettensaft","1 TL Honig","1 TL Adobo-Sauce","1 TL Smoked Paprika","1 TL Chipotle","1/2 TL Cumin","Salz","Pfeffer"],abl:"Dressing verrühren, kühlen. Garnelen würzen, 2-3 min/Seite. Bowl: Romaine + Tomaten + Zwiebel + Avocado + Garnelen + Dressing."},
+{n:"Fajita Taco Beef Bowls",kcal:467,p:37,port:4,tag:["Beef","Kartoffel","Mexikanisch"],z:["567g extra-mageres Rinderhack","680g Kartoffeln gewürfelt","120g Paprika","240g Tomaten","100g rote Zwiebel","Jalapeño optional","8g Cilantro","1 EL + 2 TL Olivenöl","Saft 1 Limette","18g Taco Seasoning","60ml Wasser","120g griech. Joghurt 0%","30g Light Mayo","1-2 EL Hot Sauce","1/2 TL Knoblauchpulver","1/2 TL Smoked Paprika","1 TL Smoked Paprika","1 TL Knoblauchpulver","Salz","Pfeffer"],abl:"Kartoffeln 25-30 min @ 220°C. Pico aus Tomaten/Zwiebel/Jalapeño/Cilantro/Limette. Paprika 2-3 min, Hack 6-8 min, Taco-Gewürz + Wasser, Limette. Sauce mischen. Bowls: Kartoffeln + Beef + Pico + Sauce."},
+{n:"Shredded Chicken Fajita Tacos",kcal:420,p:32,port:4,tag:["Hähnchen","Wrap","Mexikanisch"],z:["454g Hähnchenbrust","1 rote Paprika","1/2 Zwiebel","8 Mais-Tortillas","Guacamole","Queso Fresco","Cilantro","Limette","2 EL Olivenöl","1 Päckchen Taco Seasoning","120ml Wasser","Salz","Pfeffer"],abl:"Hähnchen 4-5 min/Seite, Taco-Gewürz + Wasser, 10-12 min köcheln. Mit Gabeln zerzupfen. Paprika + Zwiebel separat 4-5 min. Tortillas erwärmen. Hähnchen + Veggies + Guac + Queso + Cilantro + Limette."},
+{n:"Hot Honey BBQ Chicken + Crunchy Slaw",kcal:480,p:36,port:4,tag:["Hähnchen","American"],z:["680g Hähnchen-Oberschenkel","1/3 cup Hot Honey BBQ Sauce","1 Beutel Coleslaw-Mix","1/4 cup Cilantro","1/4 cup Mandelblättchen","1 EL Limettensaft","1 EL Honig","Olivenöl","1 TL Smoked Paprika","1 TL Knoblauchpulver","Salz","Pfeffer","Sesam optional"],abl:"Hähnchen 18-20 min @ 218°C. Mit BBQ bestreichen, weitere 3-4 min. Slaw aus Coleslaw + Cilantro + Mandeln + Limette + Honig + Öl. Hähnchen ruhen 5 min, schneiden, auf Slaw servieren."},
+{n:"Sweet Potato Street Corn Bowls + Hot Honey",kcal:520,p:32,port:4,tag:["Beef","Süßkartoffel","Tex-Mex"],z:["280g Süßkartoffel-Würfel TK","454g mageres Rinderhack","1 gelbe Zwiebel","1 Dose Mais","1 Jalapeño","1/4 cup Cilantro","3 EL Mayo","3 EL Sour Cream","1/2 cup Queso Fresco","Hot Honey","Saft 1/2 Limette","1 EL Olivenöl","1+1 TL Chilipulver","Salz","Pfeffer"],abl:"Süßkartoffel mit Öl + Gewürzen 8-10 min Air Fryer 200°C. Hack mit Zwiebel 5-7 min, würzen. Mais + Mayo + Sour Cream + Queso + Limette + Chili mischen. Bowls: Süßkartoffel + Beef + Mais-Mix + Jalapeño + Cilantro + Hot Honey."},
+{n:"Chicken Caesar Wrap + Parmesan-Pommes",kcal:420,p:30,port:4,tag:["Hähnchen","Wrap","American"],z:["454g Hähnchenbrust","1/2 Beutel TK-Pommes","Spinach Wraps","3 cups Romaine","4 EL Caesar-Dressing","1/4 cup + 2 EL Parmesan","1 EL Olivenöl","3/4 TL Knoblauchpulver","Petersilie getrocknet","Salz","Pfeffer"],abl:"Pommes mit Öl + Knoblauch + Salz 20-25 min @ 218°C. Hähnchen 5-6 min/Seite, schneiden. Pommes mit Parmesan + Petersilie. Romaine mit Dressing + Parmesan. Wrap mit Salat + Hähnchen + Parmesan rollen. Servieren mit Pommes."},
+{n:"High Protein Burritos (DE)",kcal:600,p:50,port:6,tag:["Beef","Wrap","Mexikanisch","Deutsch"],z:["800g Rinderhack Light","6 High Protein Wraps","1 große Zwiebel","130g Reibekäse Light","200g Frischkäse Light","60g Tomatenmark","Salz","Pfeffer","Knoblauchpulver","Paprika","Chili","Dip: 500g Skyr Natur","50g Ketchup Light","20g Senf","2 Gewürzgurken","Zitronensaft","Knoblauch"],abl:"Zwiebel würfeln, anschwitzen. Hack anbraten, würzen. Tomatenmark + Frischkäse einrühren. Wraps füllen mit Hack + Käse, rollen. Skyr-Dip mischen. Servieren."},
+{n:"Crispy Mashed Potato Salad (DE)",kcal:490,p:32,port:1,tag:["Vegetarisch","Kartoffel","Deutsch"],z:["400g Drillinge","1 TL Olivenöl","Salz","Pfeffer","Paprikapulver","Knoblauchpulver","200g Skyr","1/2 Salatgurke","Petersilie/Dill","Saft 1/2 Zitrone"],abl:"Kartoffeln 15-20 min in Salzwasser kochen. Abgießen, auf Blech, mit Glas flach drücken. Mit Öl + Gewürzen 25-30 min @ 200°C Umluft (oder Air Fryer) goldbraun. Skyr + Gurke + Kräuter + Zitrone mischen, dazu."},
+{n:"Chicken Mais Wrap (DE)",kcal:400,p:45,port:1,tag:["Hähnchen","Wrap","Schnell"],z:["140g Mais","80g Light Käse","Salat","Tomaten","80g Putenschinken","Wraps","Chicken Allrounder","Optional: Light Honey Mustard"],abl:"Wrap füllen mit Putenschinken + Käse + Mais + Salat + Tomaten + Gewürzen + Sauce. 20 min @ 180°C Heißluft."},
+{n:"Knuspriger Maultaschensalat (DE)",kcal:345,p:24,port:2,tag:["Vegetarisch","Deutsch","Schnell"],z:["250g Maultaschen Geflügel/light","2 Gurken","Ölspray","Salz","Pfeffer","Knobilicious","Roasted Onion","Dressing: 200g Skyr","1 TL Senf","Zitronensaft/Essig"],abl:"Maultaschen in Stücke schneiden, mit Ölspray + Gewürzen knusprig backen (Air Fryer/Pfanne). Gurken würfeln. Skyr-Dressing rühren. Mit Maultaschen + Gurken servieren."},
+{n:"Brownie + Cheesecake-Layer (DE)",kcal:0,p:0,port:6,tag:["Dessert","Deutsch"],z:["Brownie: 125g Mehl","30g Backkakao","2 Eier","25g Butter","60ml Milch","90g Erythrit","Cheesecake: 1 Ei","400g Magerquark","1 TL Vanilleextrakt","60g Erythrit"],abl:"Brownie-Teig anrühren, Hälfte in Form. Cheesecake-Mix drüber. Rest Brownie-Teig drauf. 20-25 min @ 180°C."},
+{n:"Feta Pasta + Chicken (Viral)",kcal:0,p:0,port:4,tag:["Hähnchen","Pasta","Italienisch"],z:["360g Pasta","200g Feta","2 Packungen Cherrytomaten","2 Knoblauchzehen","1 EL Olivenöl","Salz","Pfeffer","Frisches Basilikum","Oregano","Cajun","2 große Hähnchenbrüste"],abl:"Pasta kochen. Cherrytomaten + Olivenöl + Feta + gewürfeltes Hähnchen + Gewürze in Form. 20-25 min @ 200°C. Mit Pasta vermengen, Basilikum drüber."},
+{n:"Feta-Reis Airfryer (DE)",kcal:0,p:0,port:3,tag:["Vegetarisch","Reis","Mediterran","Schnell"],z:["2 Pkg Bens Original Express Langkornreis","4 Knoblauchzehen","350g Cherrytomaten","1 Pkg Feta light","200ml Gemüsebrühe","italienische Kräuter","Paprikapulver","Chili","Salz","Pfeffer"],abl:"Reispackungen zerbröseln in Airfryer-Silikonform. Feta in Mitte, Tomaten + Knoblauch drumherum, würzen. Brühe drüber. 25 min @ 180°C. Vermengen."},
+{n:"Protein-Eis (DE)",kcal:0,p:0,port:1,tag:["Dessert","Schnell"],z:["350ml gefrorene ungesüßte Mandelmilch","50ml ungefrorene Mandelmilch","40g More Protein (Chocolate Drink/Sahne)","1-2 Scoops Chunky Flavour","Optional: 10g Proteinpudding","Schokodrops zuckerfrei","Haselnüsse"],abl:"Gefrorene Milch im Hochleistungsmixer/Thermomix klein häckseln (Stufe 7-8). Protein + Chunky dazu, 3,5-5 min mixen bis fluffig. Toppings drauf."},
+{n:"Kartoffel-Hack-Pfanne mit Feta (DE)",kcal:490,p:34,port:1,tag:["Beef","Kartoffel","Deutsch"],z:["400g festkochende Kartoffeln","300g Rinderhack 5%","1 kleine Zwiebel","1 rote Paprika","1 Knoblauchzehe","50g Fetakäse light/normal","1 TL Olivenöl","2 EL Tomatenmark","100ml Wasser","Salz","Pfeffer","Paprikapulver","Oregano","frische Petersilie"],abl:"Kartoffeln würfeln, 10-12 min vorgaren. Zwiebel/Knoblauch/Paprika fein. Hack scharf anbraten, Zwiebel/Knoblauch dazu. Tomatenmark anrösten, mit Wasser ablöschen. Paprika + Kartoffeln dazu, würzen, 5-7 min köcheln. Feta drüber bröseln, Petersilie."}
+];
+
+const basisVorrat=[
+"Olivenöl","Salz","Schwarzer Pfeffer","Knoblauchpulver","Smoked Paprika","Cumin","Chilipulver","Onion Powder","Oregano getrocknet",
+"Knoblauch frisch","Zwiebeln gelb","Zwiebeln rot","Cherrytomaten","Limetten","Zitronen","Cilantro/Petersilie frisch",
+"Hähnchenbrust","Rinderhack mager","Eier",
+"Griech. Joghurt 0% / Skyr","Feta light","Reibekäse light","Light Mayo",
+"Basmati-Reis","Wraps high protein","Kartoffeln festkochend","Süßkartoffeln",
+"Tomatenmark","Honig/Ahornsirup","Senf"
+];
+
+let plan=JSON.parse(localStorage.getItem('plan')||'[]');
+let shopState=JSON.parse(localStorage.getItem('shop')||'{"items":[],"checked":{}}');
+let basisState=JSON.parse(localStorage.getItem('basis')||'{}');
+let currentFilter='all';
+let searchTerm='';
+
+function save(){localStorage.setItem('plan',JSON.stringify(plan));localStorage.setItem('shop',JSON.stringify(shopState));localStorage.setItem('basis',JSON.stringify(basisState));}
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');}
+
+function setTab(id,btn,title){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById(id).classList.add('active');btn.classList.add('active');document.getElementById('title').textContent=title;if(id==='plan')renderPlan();if(id==='einkauf')renderShop();}
+
+function renderRecipes(){const list=document.getElementById('recipe-list');let f=rezepte;if(searchTerm){const t=searchTerm.toLowerCase();f=f.filter(r=>r.n.toLowerCase().includes(t)||r.tag.some(g=>g.toLowerCase().includes(t))||r.z.some(z=>z.toLowerCase().includes(t)));}if(currentFilter!=='all')f=f.filter(r=>r.tag.includes(currentFilter));list.innerHTML=f.length?f.map(r=>{const idx=rezepte.indexOf(r);return`<div class="card" onclick="showRecipe(${idx})"><h3>${r.n}</h3><div class="meta">${r.kcal?r.kcal+' kcal · ':''}${r.p?r.p+'g P · ':''}${r.port} Portionen</div><div>${r.tag.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>`;}).join(''):'<div class="empty">Keine Rezepte gefunden</div>';}
+
+function filterR(v){searchTerm=v;renderRecipes();}
+function setFilter(tag,btn){currentFilter=tag;document.querySelectorAll('#filters button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRecipes();}
+
+function showRecipe(idx){const r=rezepte[idx];const inPlan=plan.includes(idx);document.getElementById('modal-content').innerHTML=`<h2>${r.n}</h2><div class="meta">${r.kcal?r.kcal+' kcal · ':''}${r.p?r.p+'g Protein · ':''}${r.port} Portionen</div><div style="margin:8px 0">${r.tag.map(t=>`<span class="tag">${t}</span>`).join('')}</div><h3>Zutaten</h3><ul>${r.z.map(z=>`<li>${z}</li>`).join('')}</ul><h3>Ablauf</h3><p>${r.abl}</p><button class="add-btn" onclick="togglePlan(${idx});closeModal();">${inPlan?'✓ Aus Plan entfernen':'+ Zum Wochenplan'}</button>`;document.getElementById('modal').classList.add('show');}
+
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+
+function togglePlan(idx){const i=plan.indexOf(idx);if(i>=0){plan.splice(i,1);toast('Aus Plan entfernt');}else{plan.push(idx);toast('Zum Plan hinzugefügt');}save();}
+
+function renderPlan(){const list=document.getElementById('plan-list');list.innerHTML=rezepte.map((r,i)=>{const sel=plan.includes(i);return`<div class="card ${sel?'selected':''}" onclick="togglePlan(${i});renderPlan();"><h3>${sel?'✓ ':''}${r.n}</h3><div class="meta">${r.kcal?r.kcal+' kcal · ':''}${r.p?r.p+'g P · ':''}${r.port} Portionen</div><div>${r.tag.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div>`;}).join('');document.getElementById('plan-summary').textContent=`${plan.length} Rezepte ausgewählt`;}
+
+function genShop(){if(plan.length===0){alert('Wähle erst Rezepte aus!');return;}const all=[];plan.forEach(idx=>{rezepte[idx].z.forEach(z=>{all.push({z,src:rezepte[idx].n});});});shopState={items:all,checked:{}};save();toast('Einkaufsliste erstellt!');document.querySelectorAll('.tab')[2].click();}
+
+function renderShop(){showShop('aktuell',document.querySelector('#einkauf .filter-bar button'));}
+
+let currentShopView='aktuell';
+function showShop(view,btn){currentShopView=view;document.querySelectorAll('#einkauf .filter-bar button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');const c=document.getElementById('shop-content');if(view==='aktuell'){if(!shopState.items||shopState.items.length===0){c.innerHTML='<div class="empty">Noch keine Liste.<br>Wähle Rezepte im Plan-Tab und klick "Einkaufsliste generieren".</div>';return;}const grouped={};shopState.items.forEach((it,i)=>{if(!grouped[it.src])grouped[it.src]=[];grouped[it.src].push({...it,i});});c.innerHTML=Object.entries(grouped).map(([src,items])=>`<div class="section-h">${src}</div>`+items.map(it=>{const ch=shopState.checked[it.i];return`<label class="checkbox ${ch?'done':''}"><input type="checkbox" ${ch?'checked':''} onchange="toggleShop(${it.i},this.checked)"><span>${it.z}</span></label>`;}).join('')).join('');}else{c.innerHTML='<div class="section-h">Was hast du noch zuhause? (abhaken = vorhanden)</div>'+basisVorrat.map((b,i)=>{const ch=basisState[i];return`<label class="checkbox ${ch?'done':''}"><input type="checkbox" ${ch?'checked':''} onchange="toggleBasis(${i},this.checked)"><span>${b}</span></label>`;}).join('');}}
+
+function toggleShop(i,ch){shopState.checked[i]=ch;save();const lbl=event.target.parentElement;lbl.classList.toggle('done',ch);}
+function toggleBasis(i,ch){basisState[i]=ch;save();const lbl=event.target.parentElement;lbl.classList.toggle('done',ch);}
+function resetShop(){if(!confirm('Wirklich zurücksetzen?'))return;if(currentShopView==='aktuell')shopState={items:[],checked:{}};else basisState={};save();showShop(currentShopView,document.querySelector('#einkauf .filter-bar button.active'));}
+
+document.getElementById('filters').innerHTML=['all','Schnell','Hähnchen','Beef','Garnele','Vegetarisch','Hoch-Protein','Deutsch','Mexikanisch','Dessert'].map(t=>`<button class="${t==='all'?'active':''}" onclick="setFilter('${t}',this)">${t==='all'?'Alle':t}</button>`).join('');
+
+renderRecipes();
+</script>
+</body>
+</html>
